@@ -14,6 +14,8 @@ print "Hello World"
 [/codetoggle]
 </pre>
 
-See _sample.png_ for an example of the look and feel.
+See _sample.png_ (https://github.com/jsjohnst/drupal_codetoggle/raw/master/sample.png) for an example of the look and feel.
 
-*Requires:* http://alexgorbatchev.com/SyntaxHighlighter
+Requires:
+---------
+http://alexgorbatchev.com/SyntaxHighlighter 3.0+
