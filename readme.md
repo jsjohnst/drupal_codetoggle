@@ -4,7 +4,7 @@ Sample Markup:
 <pre>
 [codetoggle]
 [section id=php name=PHP brush=php]
-<?php
+&lt;?php
 
 print("Hello World!");
 [/section]
