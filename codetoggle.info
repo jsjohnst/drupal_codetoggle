@@ -1,0 +1,7 @@
+name = Code Toggle
+description = Provides a filter to highlight source code using SyntaxHighlighter and add toggles for multiple languages
+package = Filters
+core = 7.x
+configure = admin/config/content/formats/codetoggle
+files[] = codetoggle.module
+#dependencies[] = libraries

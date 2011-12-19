@@ -1,0 +1,179 @@
+<?php
+
+/**
+ * Implements hook_init()
+ */
+function codetoggle_init() {
+	$options = array("type"=>"file","every_page"=>true,"preprocess"=>true);
+	drupal_add_css(_codetoggle_get_library_location() . "/styles/shCoreEclipse.css", $options);
+	
+	$options = array("type"=>"file","every_page"=>true,"preprocess"=>true,"group"=>JS_LIBRARY);
+	drupal_add_js(_codetoggle_get_library_location() . "/scripts/shCore.js", $options);
+	drupal_add_js(_codetoggle_get_library_location() . "/scripts/shAutoloader.js", $options);
+	
+	$options = array("type"=>"file","every_page"=>true,"preprocess"=>true);
+	drupal_add_css(drupal_get_path('module', 'codetoggle') . '/codetoggle.css', $options);
+	drupal_add_js(drupal_get_path('module', 'codetoggle') . '/codetoggle.js', $options);
+	
+	drupal_add_js(array("codetoggle" => array("library_base_path" => file_create_url(_codetoggle_get_library_location() . "/scripts/"))), 'setting');
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function codetoggle_requirements($phase) {
+	$requirements = array();
+	if ($phase == 'runtime') {
+		
+		$path = _codetoggle_get_library_location();
+		if(!$path) {
+			$severity = REQUIREMENT_ERROR;
+			$path = "not found";
+			$description = t('Syntax Highlighter location: %loc<br><br>Please install SyntaxHighlighter 
+							library into any of the following locations:<br><ul>
+							<li>%libp</li><li>%modp</li><li>%pubp</li>', 
+							array('%loc'=>$path, '%modp'=>drupal_get_path('module', 'codetoggle'),
+								  '%libp'=>"sites/all/libraries", '%pubp'=>variable_get('file_public_path', conf_path() . '/files')));
+		} else {
+			$severity = REQUIREMENT_OK;
+			$description = t('Syntax Highlighter location: %loc', array('%loc'=>$path));
+		}
+		
+		$requirements[] = array(
+			'title' => 'CodeToggle',
+			'value' => 'Enabled',
+			'severity' => $severity,
+			'description' => $description
+		);
+	}
+	return $requirements;
+}
+
+/**
+ * Implements hook_filter_info().
+ */
+function codetoggle_filter_info() {
+  $filters = array();
+  $filters['codetoggle'] = array(
+	'cache' => false,
+    'title' => t('Code Toggle'),
+    'description' => t('Enables a filter to highlight source code using SyntaxHighlighter and toggles for multiple languages'),
+    'prepare callback' => 'codetoggle_prepare_callback',
+    'process callback' => 'codetoggle_process_callback',
+    // 'tips callback' => 'codetoggle_filter_tips',
+    // 'settings callback' => 'codetoggle_filter_settings_callback',
+  );
+  return $filters;
+}
+
+/**
+ * Prepare callback for the CodeToggle filter.
+ */
+function codetoggle_prepare_callback($text, $filter) {
+	if(preg_match_all("@\[codetoggle\].*?\[/codetoggle\]@smS", $text, $matches)) {
+		foreach($matches[0] as $block) {
+			$hash = _codetoggle_block_persistence(_codetoggle_prepare_block($block));
+			$text = str_replace($block, "[CODETOGGLE+INIT]" . $hash . "[/CODETOGGLE+INIT]", $text);
+		}
+	}
+	
+	return $text;
+}
+
+/**
+ * Process callback for the CodeToggle filter.
+ */
+function codetoggle_process_callback($text, $filter) {	
+	if(preg_match_all("@\[CODETOGGLE\+INIT\](.*?)\[/CODETOGGLE\+INIT\]@smS", $text, $matches)) {
+		foreach($matches[1] as $hash) {
+			$text = str_replace("[CODETOGGLE+INIT]" . $hash . "[/CODETOGGLE+INIT]", _codetoggle_block_persistence(null, $hash), $text);
+		}
+	}
+	
+	return $text;
+}
+
+function _codetoggle_get_library_location() {
+	$result = variable_get('codetoggle_syntaxhighlighter_lib_location', NULL);
+	
+	if (!$result) {
+		$result = _codetoggle_find_library_location();
+		variable_set('codetoggle_syntaxhighlighter_lib_location', $result);
+	}
+	
+	return $result;
+}
+
+function _codetoggle_find_library_location() {
+	$directories = array(
+		drupal_get_path('module', 'codetoggle'),
+	 	variable_get('file_public_path', conf_path() . '/files'),
+	 	'sites/all/libraries',
+	);
+	
+	foreach($directories as $d) {
+		foreach(file_scan_directory($d, '/shCore\.js$/', array('nomask' => '/(\.\.?|CVS|src|pupload)$/')) as $filename => $file_info) {
+			// the path to syntaxhighlighter lib, (-18 to chop off "/scripts/shCore.js"
+			// part at the end
+			return substr($filename, 0, -18);
+	    }
+	}
+	
+	return NULL;
+}
+
+function _codetoggle_block_persistence($block = null, $hash = null) {
+	static $blocks;
+	
+	if(!$blocks) {
+		$blocks = array();
+	}
+	
+	if(!$hash) {
+		$hash = md5($block);
+	}
+	
+	if($block) {
+		$blocks[$hash] = $block;
+		return $hash;
+	} else if(isset($blocks[$hash])) {
+		return $blocks[$hash];
+	} 
+	
+	return false;
+}
+
+function _codetoggle_prepare_block($block) {
+	$block = str_replace(array("<", ">"), array("&lt;", "&gt;"), $block);
+	$block = preg_replace("@\[/section\]\s+\[section\]@smS", "[/section][section]", $block);
+	if(preg_match_all("@(\[section(.*?)\])(.*?)\[/section\]@smS", $block, $matches)) {
+		foreach($matches[0] as $key=>$value) {
+			$params = array("id"=>uniqid(), "name"=>"Unnamed", "brush"=>"plain");
+			
+			if($matches[2][$key]) {
+				$params = array_merge($params, _codetoggle_parse_params(trim($matches[2][$key])));
+			}
+			
+			$markup = sprintf('<span class="section" data-id="%s" data-title="%s"><pre class="brush: %s">%s</pre></span>', 
+								$params["id"], $params["name"], $params["brush"], trim($matches[3][$key]));
+			
+			$block = str_replace($matches[0][$key], $markup, $block);
+		}
+	}
+
+	$block = str_replace("[codetoggle]", '<div class="toggleview">', $block);
+	$block = str_replace("[/codetoggle]", '</div>', $block);
+
+	return $block;
+}
+
+function _codetoggle_parse_params($string) {
+	$params = array();
+	foreach(preg_split('/\s+/', $string, -1, PREG_SPLIT_NO_EMPTY) as $param) {
+		list($key,$value) = explode("=", $param);
+		if($key && $value) {
+			$params[trim($key)] = trim($value);
+		}
+	}
+	return $params;
+}

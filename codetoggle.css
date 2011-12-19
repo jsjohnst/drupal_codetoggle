@@ -1,0 +1,65 @@
+div.toggleview {
+	font-size: 16px;
+	width: 930px;
+	border: 2px solid black;
+	-moz-box-shadow: 10px 10px 5px rgba(0,0,0,0.33);
+	-webkit-box-shadow: 10px 10px 5px rgba(0,0,0,0.33);
+	box-shadow: 10px 10px 5px rgba(0,0,0,0.33);
+	-moz-border-radius: 10px;
+	border-radius: 10px;
+	padding: 1em;
+	margin-bottom: 1.5em;
+}
+
+div.toggleview > .section:before {
+	content: attr(data-title);
+	display: block;
+	font-weight: bold;
+}
+
+div.toggleview.init {
+	z-index: 2;
+	padding: 0;
+}
+
+div.toggleview.init > .section:before {
+	display: none;
+}
+
+div.toggleview.init > .section {
+	font-size: 14px;
+	display: none;
+}
+
+div.toggleview.init > .section[aria-selected] {
+	display: block;
+}
+
+div.toggleview div.hlselectors {
+	height: 2em;
+	line-height: 1em;
+	border-bottom: 2px solid #000;
+}
+
+
+div.toggleview div.hlselectors a {
+	padding: 0.5em 1em 1px 1em;
+	display: inline-block;
+	text-decoration: none;
+}
+
+div.toggleview div.hlselectors a:nth-of-type(1) {
+	margin-left: 1em;
+}
+
+div.toggleview div.hlselectors a[aria-selected] {
+	margin: 0 1em;
+	padding: 0.5em 0.5em 0 0.5em;
+	border-bottom: 1px solid #000;
+}
+
+div.toggleview > .section > div > div:after {
+	display: block;
+	margin: 1em;
+	content: ' ';
+}
